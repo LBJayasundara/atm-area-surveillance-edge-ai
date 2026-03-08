@@ -1,0 +1,18 @@
+[Unit]
+Description=ATM Area Surveillance Edge AI System
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/atm-surveillance
+ExecStart=/opt/atm-surveillance/venv/bin/python main.py --config config/config.yaml
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=atm-surveillance
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
