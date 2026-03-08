@@ -1,0 +1,18 @@
+# =============================================================================
+# YOLO Dataset Configuration
+# =============================================================================
+# 4-class custom dataset for ATM surveillance
+# Classes: gun, knife, helmet, mask
+
+path: ../data/merged_dataset  # dataset root (relative to this file)
+train: images/train
+val: images/val
+test: images/test
+
+nc: 4   # number of classes
+
+names:
+  0: gun
+  1: knife
+  2: helmet
+  3: mask
