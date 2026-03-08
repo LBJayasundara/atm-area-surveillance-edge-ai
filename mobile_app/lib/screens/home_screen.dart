@@ -19,7 +19,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _apiOnline = false;
   Map<String, int> _firebaseStats = {};
-  bool _loadingFirebaseStats = false;
 
   @override
   void initState() {
@@ -34,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final online = await api.checkHealth();
 
     // Firestore real-time stats
-    setState(() => _loadingFirebaseStats = true);
     try {
       final fb = context.read<FirebaseService>();
       final fbStats = await fb.getAlertStats();
@@ -43,10 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Firestore unavailable — fall back to REST API stats silently
     } finally {
       if (mounted) {
-        setState(() {
-          _apiOnline = online;
-          _loadingFirebaseStats = false;
-        });
+        setState(() => _apiOnline = online);
       }
     }
   }

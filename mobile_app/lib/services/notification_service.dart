@@ -75,7 +75,7 @@ class NotificationService {
   void _handleNotificationTap(RemoteMessage message) {
     final alertId = message.data['alert_id'];
     if (alertId != null && onNotificationTap != null) {
-      onNotificationTap!(alertId as String);
+      onNotificationTap!(alertId);
     }
   }
 

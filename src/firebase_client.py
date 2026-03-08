@@ -277,6 +277,10 @@ class FirebaseClient:
         try:
             blob = self._bucket.blob(f"alerts/{alert_id}.jpg")
             blob.upload_from_filename(image_path, content_type="image/jpeg")
+            # Make the object publicly readable so CachedNetworkImage in the
+            # Flutter app can fetch it directly via URL without Firebase Auth.
+            # Remove this line and generate signed URLs instead if you prefer
+            # all access to be authenticated.
             blob.make_public()
             url: str = blob.public_url
             logger.debug("Image uploaded to Storage: %s", url)

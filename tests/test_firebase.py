@@ -312,8 +312,6 @@ class TestAlertManagerFirebaseIntegration:
     def test_create_alert_pushes_to_firebase(self, mock_firebase_admin, tmp_path):
         import time
 
-        import numpy as np
-
         from src.activity_analyzer import ActivityEvent
         from src.alert_manager import AlertManager
 
@@ -344,8 +342,6 @@ class TestAlertManagerFirebaseIntegration:
 
     def test_create_alert_works_without_firebase(self, tmp_path):
         import time
-
-        import numpy as np
 
         from src.activity_analyzer import ActivityEvent
         from src.alert_manager import AlertManager
