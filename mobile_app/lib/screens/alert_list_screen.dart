@@ -1,12 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/alert_model.dart';
 import '../services/api_service.dart';
+import '../services/firebase_service.dart';
 import '../widgets/alert_card.dart';
 import 'alert_detail_screen.dart';
 
 /// Scrollable list of alerts with filter chips.
+///
+/// Displays alerts from Firestore using a real-time [StreamBuilder] so the
+/// list updates instantly when new alerts arrive.  Falls back to polling the
+/// REST API if Firestore is unavailable.
 class AlertListScreen extends StatefulWidget {
   const AlertListScreen({super.key});
 
@@ -18,8 +24,90 @@ class _AlertListScreenState extends State<AlertListScreen> {
   String? _filterType;
   bool? _filterAcknowledged;
 
-  static const _filterOptions = ['weapon', 'concealment', 'loitering'];
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Alerts'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: _FilterBar(
+            filterType: _filterType,
+            filterAcknowledged: _filterAcknowledged,
+            onTypeChanged: (v) => setState(() => _filterType = v),
+            onAcknowledgedChanged: (v) =>
+                setState(() => _filterAcknowledged = v),
+          ),
+        ),
+      ),
+      body: _buildFirestoreList(context),
+    );
+  }
 
+  Widget _buildFirestoreList(BuildContext context) {
+    final fb = context.read<FirebaseService>();
+
+    Stream<List<AlertModel>> stream;
+    if (_filterAcknowledged == false) {
+      stream = fb.getUnacknowledgedAlertsStream();
+    } else if (_filterType != null) {
+      stream = fb.getAlertsByTypeStream(_filterType!);
+    } else {
+      stream = fb.getAlertsStream();
+    }
+
+    return StreamBuilder<List<AlertModel>>(
+      stream: stream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          // Firestore unavailable — fall back to legacy REST API list
+          return _LegacyAlertList(
+            filterType: _filterType,
+            filterAcknowledged: _filterAcknowledged,
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final alerts = snapshot.data!;
+        if (alerts.isEmpty) {
+          return const Center(child: Text('No alerts found.'));
+        }
+        return ListView.builder(
+          itemCount: alerts.length,
+          itemBuilder: (context, index) {
+            final alert = alerts[index];
+            return AlertCard(
+              alert: alert,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AlertDetailScreen(alert: alert),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Legacy REST API–backed alert list used when Firestore is unavailable.
+class _LegacyAlertList extends StatefulWidget {
+  const _LegacyAlertList({
+    required this.filterType,
+    required this.filterAcknowledged,
+  });
+
+  final String? filterType;
+  final bool? filterAcknowledged;
+
+  @override
+  State<_LegacyAlertList> createState() => _LegacyAlertListState();
+}
+
+class _LegacyAlertListState extends State<_LegacyAlertList> {
   @override
   void initState() {
     super.initState();
@@ -28,8 +116,8 @@ class _AlertListScreenState extends State<AlertListScreen> {
 
   Future<void> _fetchAlerts() async {
     await context.read<ApiService>().fetchAlerts(
-          activityType: _filterType,
-          acknowledged: _filterAcknowledged,
+          activityType: widget.filterType,
+          acknowledged: widget.filterAcknowledged,
         );
   }
 
@@ -37,36 +125,6 @@ class _AlertListScreenState extends State<AlertListScreen> {
   Widget build(BuildContext context) {
     final api = context.watch<ApiService>();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Alerts'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchAlerts,
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: _FilterBar(
-            filterType: _filterType,
-            filterAcknowledged: _filterAcknowledged,
-            onTypeChanged: (v) {
-              setState(() => _filterType = v);
-              _fetchAlerts();
-            },
-            onAcknowledgedChanged: (v) {
-              setState(() => _filterAcknowledged = v);
-              _fetchAlerts();
-            },
-          ),
-        ),
-      ),
-      body: _buildBody(api),
-    );
-  }
-
-  Widget _buildBody(ApiService api) {
     if (api.loading) {
       return const Center(child: CircularProgressIndicator());
     }

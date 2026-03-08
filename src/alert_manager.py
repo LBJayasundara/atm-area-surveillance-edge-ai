@@ -42,6 +42,13 @@ from src.logger import get_logger
 
 logger = get_logger(__name__)
 
+# FirebaseClient is imported lazily so the module still loads when
+# firebase-admin is not installed.
+try:
+    from src.firebase_client import FirebaseClient as _FirebaseClient
+except ImportError:  # pragma: no cover
+    _FirebaseClient = None  # type: ignore[assignment,misc]
+
 
 class AlertManager:
     """
@@ -61,6 +68,7 @@ class AlertManager:
         snapshot_dir: str = "snapshots",
         camera_id: str = "cam_01",
         location: str = "ATM Entrance",
+        firebase_client: Optional[Any] = None,
     ) -> None:
         """
         Initialise the alert manager.
@@ -70,11 +78,16 @@ class AlertManager:
             snapshot_dir: Directory where snapshot images are saved.
             camera_id: Identifier for the camera producing the feed.
             location: Human-readable location label for alerts.
+            firebase_client: Optional :class:`~src.firebase_client.FirebaseClient`
+                instance.  When provided, alerts are also pushed to Firestore and
+                images are uploaded to Firebase Storage in addition to being saved
+                locally to SQLite.
         """
         self.db_path = db_path
         self.snapshot_dir = snapshot_dir
         self.camera_id = camera_id
         self.location = location
+        self._firebase: Optional[Any] = firebase_client
 
         self._alert_counter = 0
 
@@ -131,6 +144,19 @@ class AlertManager:
 
         self._persist_alert(alert)
         logger.info("Alert created: %s (%s)", alert_id, event.activity)
+
+        # Push to Firebase if client is configured
+        if self._firebase is not None:
+            try:
+                image_full_path = (
+                    os.path.join(self.snapshot_dir, image_filename)
+                    if image_filename
+                    else None
+                )
+                self._firebase.create_alert(alert, image_path=image_full_path)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Firebase push failed for %s: %s", alert_id, exc)
+
         return alert
 
     def get_alerts(

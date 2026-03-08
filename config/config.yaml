@@ -76,6 +76,15 @@ performance:
   frame_queue_size: 2
 
 # -----------------------------------------------------------------------------
+# Firebase
+# -----------------------------------------------------------------------------
+firebase:
+  credentials_path: "config/firebase-credentials.json"
+  storage_bucket: "your-project-id.appspot.com"
+  collection_name: "alerts"
+  fcm_topic: "atm_alerts"
+
+# -----------------------------------------------------------------------------
 # Logging
 # -----------------------------------------------------------------------------
 logging:
