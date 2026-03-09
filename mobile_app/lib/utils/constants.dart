@@ -17,4 +17,14 @@ abstract class AppConstants {
   // HTTP
   static const int requestTimeoutSeconds = 10;
   static const int pollingIntervalSeconds = 15;
+
+  // Firebase / Firestore
+  static const String firestoreAlertsCollection = 'alerts';
+
+  // Firebase Cloud Messaging
+  static const String fcmAlertsTopic = 'atm_alerts';
+  static const String fcmChannelId = 'atm_alerts';
+  static const String fcmChannelName = 'ATM Alerts';
+  static const String fcmChannelDescription =
+      'Suspicious activity alerts from ATM surveillance';
 }

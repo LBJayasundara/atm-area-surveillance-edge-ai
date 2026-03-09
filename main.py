@@ -28,6 +28,11 @@ from src.tracker import Tracker
 from src.video_stream import VideoStream
 from src.zones import ZoneManager
 
+try:
+    from src.firebase_client import FirebaseClient
+except ImportError:  # pragma: no cover
+    FirebaseClient = None  # type: ignore[assignment,misc]
+
 logger = get_logger(__name__)
 
 _RUNNING = True
@@ -133,11 +138,27 @@ def run(config_path: str = "config/config.yaml") -> None:
     )
 
     # --- Alert manager ---
+    firebase_cfg = cfg.get("firebase", {})
+    firebase_client = None
+    if FirebaseClient is not None and firebase_cfg.get("credentials_path"):
+        firebase_client = FirebaseClient(
+            credentials_path=firebase_cfg.get("credentials_path", ""),
+            storage_bucket=firebase_cfg.get("storage_bucket", ""),
+            collection_name=firebase_cfg.get("collection_name", "alerts"),
+            fcm_topic=firebase_cfg.get("fcm_topic", "atm_alerts"),
+        )
+        if firebase_client.available:
+            logger.info("Firebase integration active.")
+        else:
+            logger.warning("Firebase configured but unavailable — alerts stored locally only.")
+            firebase_client = None
+
     alert_manager = AlertManager(
         db_path=cfg.get("database", {}).get("path", "database/alerts.db"),
         snapshot_dir=cfg.get("snapshots", {}).get("dir", "snapshots"),
         camera_id=cam_cfg.get("camera_id", "cam_01"),
         location=cam_cfg.get("location", "ATM Entrance"),
+        firebase_client=firebase_client,
     )
 
     # --- API server ---

@@ -13,6 +13,11 @@ venv/
 env/
 *.egg
 
+# Firebase credentials (never commit real credentials)
+config/firebase-credentials.json
+mobile_app/android/app/google-services.json
+mobile_app/ios/Runner/GoogleService-Info.plist
+
 # Models (large binary files)
 models/*.pt
 models/*.onnx

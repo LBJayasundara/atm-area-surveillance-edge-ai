@@ -6,9 +6,13 @@ import 'package:intl/intl.dart';
 
 import '../models/alert_model.dart';
 import '../services/api_service.dart';
+import '../services/firebase_service.dart';
 import '../widgets/activity_badge.dart';
 
 /// Full alert detail view with zoomable snapshot image.
+///
+/// The snapshot is loaded from Firebase Storage when [AlertModel.imageUrl] is
+/// set; otherwise it falls back to the legacy REST API image endpoint.
 class AlertDetailScreen extends StatelessWidget {
   const AlertDetailScreen({super.key, required this.alert});
 
@@ -17,7 +21,12 @@ class AlertDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final api = context.read<ApiService>();
-    final imageUrl = alert.image.isNotEmpty ? api.imageUrl(alert.image) : null;
+
+    // Prefer Firebase Storage URL; fall back to legacy REST API image path.
+    final imageUrl = alert.imageUrl.isNotEmpty
+        ? alert.imageUrl
+        : (alert.image.isNotEmpty ? api.imageUrl(alert.image) : null);
+
     final formattedTime =
         DateFormat('MMM d, y • HH:mm:ss').format(alert.timestamp.toLocal());
 
@@ -29,17 +38,7 @@ class AlertDetailScreen extends StatelessWidget {
             TextButton.icon(
               icon: const Icon(Icons.check),
               label: const Text('Acknowledge'),
-              onPressed: () async {
-                final ok = await api.acknowledgeAlert(alert.id);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(ok ? 'Alert acknowledged.' : 'Failed.'),
-                    ),
-                  );
-                  if (ok) Navigator.pop(context);
-                }
-              },
+              onPressed: () => _acknowledge(context),
             ),
         ],
       ),
@@ -84,6 +83,27 @@ class AlertDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _acknowledge(BuildContext context) async {
+    bool ok = false;
+
+    // Try Firestore acknowledgement first.
+    try {
+      final fb = context.read<FirebaseService>();
+      await fb.acknowledgeAlert(alert.id);
+      ok = true;
+    } catch (_) {
+      // Fall back to REST API.
+      ok = await context.read<ApiService>().acknowledgeAlert(alert.id);
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? 'Alert acknowledged.' : 'Failed.')),
+      );
+      if (ok) Navigator.pop(context);
+    }
   }
 }
 

@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Alert snapshot images.
+    //
+    // The Python edge-AI system uploads images using the Admin SDK and calls
+    // blob.make_public() so the Flutter app can load them via CachedNetworkImage
+    // without requiring a signed URL.  If you prefer authenticated-only access,
+    // remove the `make_public()` call in src/firebase_client.py and change the
+    // rule below to:
+    //   allow read: if request.auth != null;
+    match /alerts/{allPaths=**} {
+      allow read;                // public read — images are made public at upload time
+      allow write: if false;     // only the Admin SDK (Raspberry Pi) can write
+    }
+  }
+}
